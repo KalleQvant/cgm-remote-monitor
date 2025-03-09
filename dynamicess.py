@@ -675,19 +675,10 @@ class DynamicEss(SystemCalcDelegate, ChargeControl):
 						self.charge_hysteresis = 0
 						self.discharge_hysteresis = 1
 						self.update_chargerate(now, w.stop, abs(self.soc - w.soc))
-						
-						# Experimental: If SOC is < 90% (to be improved based on CCL of the battery), 
-						#               pretend we have a 0 feedin enabled, so feedin is suppressed during
-						#               scheduled charge, which should lead to higher charge rates, if additional solar is available.
-						
-						if  self.soc >= 90 or availableSolarPlus < self._dbusservice['/DynamicEss/ChargeRate']: 
-							#regular charge as requested
-							self._dbusservice['/DynamicEss/ChargeRate'] = self._device.charge(w.flags, restrictions, self.chargerate, w.allow_feedin)
-							overrideStrategy = "SCHEDULED_CHARGE"
-						else:
-							#allow exceeded chargerate by suppressing feedin.
-							self._dbusservice['/DynamicEss/ChargeRate'] = self._device.charge(w.flags, restrictions, self.chargerate, False)
-							overrideStrategy = "SCHEDULED_CHARGE_SUPPRESS_FEEDIN"
+						self._dbusservice['/DynamicEss/ChargeRate'] = \
+							self._device.charge(w.flags, restrictions,
+							self.chargerate, w.allow_feedin)
+			
 					else: 
 						self.charge_hysteresis = 1
 						
@@ -697,7 +688,7 @@ class DynamicEss(SystemCalcDelegate, ChargeControl):
 							self._device.self_consume(restrictions, w.allow_feedin)
 							overrideStrategy = 'SELFCONSUME_ACCEPT_CHARGE'
 						else:
-							if (self.targetsoc + 20 < self.soc):
+							if ((self.targetsoc + 20) < self.soc):
 								# Case 2: solar shortage, but soc is ahead of schedule.
 								self._dbusservice['/DynamicEss/ChargeRate'] = self.chargerate = None
 								self._device.self_consume(restrictions, w.allow_feedin)
@@ -710,11 +701,11 @@ class DynamicEss(SystemCalcDelegate, ChargeControl):
 								self._device.discharge(w.flags, restrictions,
 								self.chargerate, w.allow_feedin)
                                 else: # battery idle
-                                # SOC/target-soc needs to move 1% to move out of idle
-                                # zone
-                                self.discharge_hysteresis = 1
-                                self._dbusservice['/DynamicEss/ChargeRate'] = \
-                                    self._device.idle(w.allow_feedin)
+                                    # SOC/target-soc needs to move 1% to move out of idle
+                                    # zone
+                                    self.discharge_hysteresis = 1
+                                    self._dbusservice['/DynamicEss/ChargeRate'] = \
+                                        self._device.idle(w.allow_feedin)
 
 
 				break # out of for loop
